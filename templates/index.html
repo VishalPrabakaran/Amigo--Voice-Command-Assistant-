@@ -775,8 +775,34 @@
     if (t) t.remove();
   }
 
+  // Handle time & date queries locally using the browser's timezone
+  // so they always reflect the user's local time, not the server's UTC time.
+  function handleLocalQuery(query) {
+    const q = query.toLowerCase();
+    const now = new Date();
+
+    if (q.includes('time')) {
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      return `The current time is ${timeStr}.`;
+    }
+    if (q.includes('date') || q.includes('today') || q.includes('day')) {
+      const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      return `Today is ${dateStr}.`;
+    }
+    return null; // Not a local query — send to server
+  }
+
   async function processQuery(query) {
     addMessage('user', query);
+
+    // ✅ Handle time/date on the client side (avoids UTC mismatch on Vercel)
+    const localResponse = handleLocalQuery(query);
+    if (localResponse) {
+      addMessage('bot', localResponse);
+      speak(localResponse);
+      return;
+    }
+
     addTyping();
 
     micBtn.classList.remove('listening');
@@ -788,7 +814,7 @@
       const res = await fetch('/process', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({query})
+        body: JSON.stringify({ query, utcOffset: new Date().getTimezoneOffset() })
       });
       const data = await res.json();
 
