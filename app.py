@@ -66,15 +66,25 @@ def process_command():
     if any(phrase in query for phrase in ["who are you", "what are you", "are you", "your name"]):
         return jsonify({"type": "info", "message": "I'm Amigo, your intelligent voice assistant. I can open websites, search Wikipedia, tell you the time, and much more!"})
 
-    # Time
+    # Time — use client's UTC offset (in minutes) if provided, else fall back to server UTC
     if "time" in query:
-        now = datetime.datetime.now().strftime("%I:%M %p")
-        return jsonify({"type": "info", "message": f"The current time is {now}."})
+        utc_offset = data.get("utcOffset")  # minutes, e.g. 330 for IST (UTC+5:30)
+        if utc_offset is not None:
+            now = datetime.datetime.utcnow() + datetime.timedelta(minutes=-int(utc_offset))
+        else:
+            now = datetime.datetime.utcnow()
+        time_str = now.strftime("%I:%M %p")
+        return jsonify({"type": "info", "message": f"The current time is {time_str}."})
 
-    # Date
+    # Date — same UTC offset approach
     if "date" in query or "today" in query:
-        today = datetime.datetime.now().strftime("%A, %B %d, %Y")
-        return jsonify({"type": "info", "message": f"Today is {today}."})
+        utc_offset = data.get("utcOffset")
+        if utc_offset is not None:
+            today = datetime.datetime.utcnow() + datetime.timedelta(minutes=-int(utc_offset))
+        else:
+            today = datetime.datetime.utcnow()
+        date_str = today.strftime("%A, %B %d, %Y")
+        return jsonify({"type": "info", "message": f"Today is {date_str}."})
 
     # Wikipedia search
     if "wikipedia" in query or "search" in query or "who is" in query or "what is" in query:
